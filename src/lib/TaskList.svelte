@@ -1,14 +1,37 @@
 <script lang="ts">
-import { tasks } from './stores';
+import TaskTime from './TaskTime.svelte';
+// ...existing code...
 import type { Task } from './models';
-import { deleteTask } from './services/taskService';
+import { onMount } from 'svelte';
 
+let tasks: Task[] = [];
+let loading = false;
+let errorMsg = '';
 
-const allTasks = tasks;
-
-function handleDelete(id: string) {
-  deleteTask(id);
+async function fetchTasks() {
+  loading = true;
+  const res = await fetch('/api/tasks');
+  tasks = await res.json();
+  loading = false;
 }
+
+onMount(fetchTasks);
+
+async function handleDelete(id: string) {
+  errorMsg = '';
+  const res = await fetch(`/api/tasks?id=${id}`, { method: 'DELETE' });
+  if (res.ok) {
+    await fetchTasks();
+  } else {
+    try {
+      const err = await res.json();
+      errorMsg = err?.message || 'Kunde inte ta bort task.';
+    } catch {
+      errorMsg = 'Kunde inte ta bort task.';
+    }
+  }
+}
+// ...existing code...
 </script>
 
 <style>
@@ -43,13 +66,20 @@ function handleDelete(id: string) {
 </style>
 
 <div class="task-list">
-  {#if $allTasks.length === 0}
+  {#if errorMsg}
+    <div style="color: #c0392b; margin-bottom: 0.7rem;">{errorMsg}</div>
+  {/if}
+  <h2 style="margin-bottom:1rem; color:#1769aa;">Tasks</h2>
+  {#if loading}
+    <div>Laddar...</div>
+  {:else if tasks.length === 0}
     <div>Inga tasks ännu.</div>
   {:else}
-    {#each $allTasks as task (task.id)}
+    {#each tasks as task (task.id)}
       <div class="task-item">
         <span class="task-title">{task.title}</span>
-        <button class="delete-btn" onclick={() => handleDelete(task.id)}>Ta bort</button>
+        <TaskTime taskId={task.id} />
+        <button class="delete-btn" on:click={() => handleDelete(task.id)}>Ta bort</button>
       </div>
     {/each}
   {/if}

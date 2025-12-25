@@ -1,8 +1,16 @@
 
+export const dashboardLayout = sqliteTable('dashboard_layout', {
+	userId: text('user_id').primaryKey().references(() => user.id),
+	widgetOrder: text('widget_order').notNull(), // JSON-string array av widget-id
+});
+
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 export const user = sqliteTable('user', {
 	id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+	name: text('name'),
+	email: text('email'),
+	picture: text('picture'),
 	age: integer('age')
 });
 
@@ -42,4 +50,12 @@ export const task = sqliteTable('task', {
 	aiMomentumCurve: text('ai_momentum_curve'), // JSON string
 	createdAt: text('created_at'),
 	updatedAt: text('updated_at')
+});
+
+export const timerSession = sqliteTable('timer_session', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  taskId: text('task_id').notNull().references(() => task.id),
+  start: text('start').notNull(), // ISO timestamp
+  stop: text('stop'), // ISO timestamp
+  duration: integer('duration'), // seconds
 });

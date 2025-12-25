@@ -1,11 +1,14 @@
+
 import { deepWork } from './deepWorkStore';
-import { timerEvents } from './timerStore';
+import { timerEvents } from './timerService';
 import { get } from 'svelte/store';
 import type { DeepWorkState } from './deepWorkModels';
 
-// Simple deep work calculation based on timer events
+// Simple deep work calculation based on timer events (aggregated from Map)
 export function updateDeepWork() {
-  const events = get(timerEvents);
+  const eventsMap = get(timerEvents);
+  // Flatten all TimerEvent[] arrays from the Map into a single array
+  const events = Array.from(eventsMap.values()).flat();
   let longSessions = 0;
   let highFocusPeriods = 0;
   let suitableTasks = 0;

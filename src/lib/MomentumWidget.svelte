@@ -1,12 +1,19 @@
 <script lang="ts">
+import { timerEvents } from './timerService';
 import { momentum } from './momentumStore';
 import { updateMomentum } from './momentumService';
 
-$effect(() => {
-  updateMomentum();
-});
-
 const m = momentum;
+
+// Re-run updateMomentum whenever timerEvents changes
+$effect(() => {
+  const unsub = timerEvents.subscribe(() => {
+    updateMomentum();
+  });
+  // Also run once on mount
+  updateMomentum();
+  return unsub;
+});
 </script>
 
 <style>
@@ -31,7 +38,7 @@ const m = momentum;
 
 <div class="momentum-widget">
   <div class="state">Momentum: {$m.momentumState}</div>
-  <div class="score">{$m.momentumScore}</div>
+  <div class="score">{($m.momentumScore).toFixed(1)}</div>
   <div>Sessionlängd: {$m.sessionLength} sek</div>
   <div>Streaks: {$m.streaks}</div>
   <div>Combos: {$m.combos}</div>

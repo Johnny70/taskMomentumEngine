@@ -1,44 +1,90 @@
 <script lang="ts">
-import { tasks } from './stores';
-import { startTimer, stopTimer, getActiveTimer } from './timerService';
+import { onMount } from 'svelte';
+import type { Task } from './models';
+import { startTimer, stopTimer, getActiveTimer, fetchAllTimerEvents, timerEvents } from './timerService';
+import { get } from 'svelte/store';
 
-const allTasks = tasks;
-let selectedTaskId = $state('');
-let interval: any = null;
-let elapsed = $state(0);
+let tasks: Task[] = [];
+let selectedTaskId = '';
+let errorMsg = '';
+let timer: { start: string } | null = null;
+let elapsed = 0;
+let interval: ReturnType<typeof setInterval> | null = null;
+let totalTime = 0;
 
-$effect(() => {
-  const timer = getActiveTimer();
-  if (timer) {
-    interval = setInterval(() => {
-      elapsed = Math.floor((Date.now() - new Date(timer.start).getTime()) / 1000);
-    }, 1000);
-  } else {
-    clearInterval(interval);
-    elapsed = 0;
+async function fetchTasks() {
+  errorMsg = '';
+  try {
+    const res = await fetch('/api/tasks');
+    if (!res.ok) {
+      errorMsg = 'Kunde inte hämta tasks från API.';
+      tasks = [];
+      return;
+    }
+    tasks = await res.json();
+    if (!Array.isArray(tasks) || tasks.length === 0) {
+      errorMsg = 'Inga tasks hittades i databasen.';
+    }
+  } catch (e: any) {
+    errorMsg = 'Fel vid hämtning av tasks: ' + (e && typeof e === 'object' && 'message' in e ? (e as any).message : String(e));
+    tasks = [];
   }
-  return () => clearInterval(interval);
+}
+
+
+
+onMount(() => {
+  fetchTasks();
+  fetchAllTimerEvents();
+  updateTimer();
 });
 
-function handleStart() {
-  if (selectedTaskId) {
-    startTimer(selectedTaskId);
+
+timerEvents.subscribe(updateTotalTime);
+
+timerEvents.subscribe(updateTotalTime);
+
+
+function updateTotalTime() {
+  const map = get(timerEvents);
+  const events = map.get(selectedTaskId) || [];
+  totalTime = events.reduce((sum: number, e: any) => sum + (e.duration || 0), 0);
+}
+
+function updateTimer() {
+  timer = getActiveTimer();
+  if (interval) clearInterval(interval);
+  if (timer && timer.start) {
+    elapsed = Math.floor((Date.now() - new Date(timer.start).getTime()) / 1000);
+    interval = setInterval(() => {
+      if (timer && timer.start) {
+        elapsed = Math.floor((Date.now() - new Date(timer.start).getTime()) / 1000);
+      }
+    }, 1000);
+  } else {
+    elapsed = 0;
   }
 }
 
-function handleStop() {
-  stopTimer();
+
+async function handleStart() {
+  if (selectedTaskId) {
+    await startTimer(selectedTaskId);
+    updateTimer();
+    await fetchAllTimerEvents();
+    updateTotalTime();
+  }
+}
+
+
+async function handleStop() {
+  await stopTimer();
+  updateTimer();
+  await fetchAllTimerEvents();
+  updateTotalTime();
 }
 </script>
-
 <style>
-.timer-widget {
-  margin: 1.5rem 0;
-  padding: 1rem;
-  background: #f5f5f5;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-}
 select {
   margin-bottom: 0.7rem;
   width: 100%;
@@ -70,18 +116,23 @@ button:disabled {
 
 <div class="timer-widget">
   <div class="timer-display">
-    {#if getActiveTimer()}
+    {#if timer}
       Tid: {Math.floor(elapsed / 60)}:{(elapsed % 60).toString().padStart(2, '0')}
     {:else}
       Ingen timer aktiv
     {/if}
+    <br />
+    <span style="font-size:0.95em;color:#888">Total tid för task: {Math.floor(totalTime / 60)}:{(totalTime % 60).toString().padStart(2, '0')}</span>
   </div>
-  <select bind:value={selectedTaskId} disabled={!!getActiveTimer()}>
+  {#if errorMsg}
+    <div style="color: #c0392b; margin-bottom: 0.7rem;">{errorMsg}</div>
+  {/if}
+  <select bind:value={selectedTaskId} disabled={!!timer}>
     <option value="">Välj task</option>
-    {#each $allTasks as task (task.id)}
+    {#each tasks as task (task.id)}
       <option value={task.id}>{task.title}</option>
     {/each}
   </select>
-  <button onclick={handleStart} disabled={!selectedTaskId || !!getActiveTimer()}>Starta</button>
-  <button onclick={handleStop} disabled={!getActiveTimer()}>Stoppa</button>
+  <button on:click={handleStart} disabled={!selectedTaskId || !!timer}>Starta</button>
+  <button on:click={handleStop} disabled={!timer}>Stoppa</button>
 </div>

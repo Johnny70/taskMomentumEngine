@@ -1,10 +1,24 @@
-<script lang="ts">
-import { projects } from './stores';
-import { deleteProject } from './services/projectService';
 
-function handleDelete(id: string) {
-  deleteProject(id);
+<script lang="ts">
+import { onMount } from 'svelte';
+import type { Project } from './models';
+
+let projects: Project[] = [];
+let loading = false;
+
+async function fetchProjects() {
+  loading = true;
+  const res = await fetch('/api/projects');
+  projects = await res.json();
+  loading = false;
 }
+
+async function handleDelete(id: string) {
+  await fetch(`/api/projects?id=${id}`, { method: 'DELETE' });
+  await fetchProjects();
+}
+
+onMount(fetchProjects);
 </script>
 
 <style>
@@ -39,13 +53,15 @@ function handleDelete(id: string) {
 </style>
 
 <div class="project-list">
-  {#if $projects.length === 0}
+  {#if loading}
+    <div>Laddar projekt...</div>
+  {:else if projects.length === 0}
     <div>Inga projekt ännu.</div>
   {:else}
-    {#each $projects as project (project.id)}
+    {#each projects as project (project.id)}
       <div class="project-item">
         <span class="project-title">{project.title}</span>
-        <button class="delete-btn" onclick={() => handleDelete(project.id)}>Ta bort</button>
+        <button class="delete-btn" on:click={() => handleDelete(project.id)}>Ta bort</button>
       </div>
     {/each}
   {/if}

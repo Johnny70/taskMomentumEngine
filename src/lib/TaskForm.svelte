@@ -1,40 +1,82 @@
 <script lang="ts">
-import { createTask } from './services/taskService';
 import type { Task } from './models';
-import { projects } from './stores';
+import type { Project } from './models';
+import { onMount } from 'svelte';
 
 
-let title = $state('');
-let description = $state('');
-let projectId = $state('');
-let estimatedHours = $state(1);
-let impact = $state(50);
-let priority = $state(50);
-let energyRequirement = $state(50);
+let tasks: Task[] = [];
+let projects: Project[] = [];
+let title = '';
+let description = '';
+let projectId = '';
+let estimatedHours = 1;
+let impact = 50;
+let priority = 50;
+let energyRequirement = 50;
+let loading = false;
+let errorMsg = '';
 
-const allProjects = projects;
+async function fetchTasks() {
+  loading = true;
+  const res = await fetch('/api/tasks');
+  tasks = await res.json();
+  loading = false;
+}
 
-function handleSubmit(e: Event) {
+async function fetchProjects() {
+  const res = await fetch('/api/projects');
+  projects = await res.json();
+}
+
+onMount(() => {
+  fetchTasks();
+  fetchProjects();
+});
+
+async function handleSubmit(e: Event) {
   e.preventDefault();
   if (!title.trim()) return;
-  createTask({
-    title,
-    description,
-    projectId,
-    status: 'todo',
-    estimatedHours,
-    actualTimeSpent: 0,
-    impact,
-    priority,
-    energyRequirement
+  errorMsg = '';
+  const now = new Date().toISOString();
+  const res = await fetch('/api/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title,
+      description,
+      projectId,
+      status: 'todo',
+      estimatedHours,
+      actualTimeSpent: 0,
+      impact,
+      priority,
+      energyRequirement,
+      createdAt: now,
+      updatedAt: now
+    })
   });
-  title = '';
-  description = '';
-  projectId = '';
-  estimatedHours = 1;
-  impact = 50;
-  priority = 50;
-  energyRequirement = 50;
+  if (res.ok) {
+    await fetchTasks();
+    title = '';
+    description = '';
+    projectId = '';
+    estimatedHours = 1;
+    impact = 50;
+    priority = 50;
+    energyRequirement = 50;
+  } else {
+    try {
+      const err = await res.json();
+      errorMsg = err?.message || 'Kunde inte skapa task.';
+    } catch {
+      errorMsg = 'Kunde inte skapa task.';
+    }
+  }
+}
+
+async function handleDelete(id: string) {
+  await fetch(`/api/tasks?id=${id}`, { method: 'DELETE' });
+  await fetchTasks();
 }
 </script>
 
@@ -74,6 +116,9 @@ function handleSubmit(e: Event) {
 </style>
 
 <form class="form" onsubmit={handleSubmit}>
+  {#if errorMsg}
+    <div style="color: #c0392b; margin-bottom: 0.7rem;">{errorMsg}</div>
+  {/if}
   <label for="title">Titel</label>
   <input id="title" bind:value={title} required />
 
@@ -81,9 +126,9 @@ function handleSubmit(e: Event) {
   <textarea id="description" bind:value={description} rows="2"></textarea>
 
   <label for="project">Projekt</label>
-  <select id="project" bind:value={projectId}>
+  <select id="project" bind:value={projectId} required>
     <option value="">Välj projekt</option>
-    {#each $allProjects as project (project.id)}
+    {#each projects as project (project.id)}
       <option value={project.id}>{project.title}</option>
     {/each}
   </select>

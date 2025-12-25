@@ -1,0 +1,47 @@
+Statusrapport – 2025-12-24
+===========================
+
+Projekt: TaskMomentum-Engine
+
+Senaste större ändringar:
+-------------------------
+- Dashboarden har fått 3-kolumnslayout och stöd för drag-and-drop av widgets (svelte-dnd-action).
+- Widget-ordning sparas nu i databasen per användare (dashboard_layout-tabell, API-endpoint).
+- Momentum- och Deep Work-motorerna är fullt reaktiva och UI visar poäng med en decimal.
+- All timerdata och widgetlogik är nu synkad mot rätt datamodell (Map-baserad timerEvents).
+- Alla SvelteKit route-konflikter är lösta.
+- Startsidan är nu en ren login-sida med "Logga in med Google"-knapp (dashboard flyttas till skyddad route).
+
+Pågående arbete:
+----------------
+- Implementera Google OAuth2-login (egen implementation, ej Lucia eller Auth.js).
+- Skapa backend-endpoints för Google OAuth2-flöde och sessionshantering.
+- Flytta dashboarden till skyddad route, endast åtkomlig för inloggade användare.
+
+Todo-lista (enligt projektets todo):
+------------------------------------
+- [ ] Verifiera och förbättra task/project/focus area-flöden
+- [-] Implementera och visualisera momentum- och deep work-motor (KLART)
+- [ ] Säkerställ offline-stöd och synkning för timers
+- [ ] Implementera och visa AI-fält och rekommendationer
+- [ ] Skriv och kör tester för API och UI
+- [ ] Förbättra UI/UX och design
+
+Teknisk status:
+---------------
+- SvelteKit 5, TypeScript, Drizzle ORM, SQLite.
+- Ingen auth-lösning ännu – Google OAuth2 påbörjad.
+- Inga externa auth-bibliotek används (egen implementation påbörjad).
+- All kod följer .copilot/instructions.md och är modulär.
+
+Nästa steg:
+-----------
+1. Slutför Google OAuth2-login och sessionhantering.
+2. Flytta dashboarden till /dashboard och skydda den.
+3. Koppla användar-id till dashboard_layout och övriga personliga data.
+4. Fortsätt enligt todo-listan.
+
+Senaste agent:
+--------------
+- GitHub Copilot (GPT-4.1)
+

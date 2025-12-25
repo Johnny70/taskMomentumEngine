@@ -1,12 +1,19 @@
 <script lang="ts">
+import { timerEvents } from './timerService';
 import { deepWork } from './deepWorkStore';
 import { updateDeepWork } from './deepWorkService';
 
-$effect(() => {
-  updateDeepWork();
-});
-
 const d = deepWork;
+
+// Re-run updateDeepWork whenever timerEvents changes
+$effect(() => {
+  const unsub = timerEvents.subscribe(() => {
+    updateDeepWork();
+  });
+  // Also run once on mount
+  updateDeepWork();
+  return unsub;
+});
 </script>
 
 <style>
@@ -31,7 +38,7 @@ const d = deepWork;
 
 <div class="deepwork-widget">
   <div class="state">Deep Work: {$d.deepWorkState}</div>
-  <div class="score">{$d.deepWorkScore}</div>
+  <div class="score">{($d.deepWorkScore).toFixed(1)}</div>
   <div>Långa sessioner: {$d.longSessions}</div>
   <div>Högfokusperioder: {$d.highFocusPeriods}</div>
 </div>

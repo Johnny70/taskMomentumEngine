@@ -1,21 +1,51 @@
 <script lang="ts">
-import { createProject } from './services/projectService';
-import { focusAreas } from './stores';
+import type { Project } from './models';
+import type { FocusArea } from './models';
+import { onMount } from 'svelte';
+
+let projects: Project[] = [];
+let focusAreas: FocusArea[] = [];
 let title = '';
 let description = '';
 let focusAreaId = '';
+let loading = false;
 
-function handleSubmit(e: Event) {
+async function fetchProjects() {
+  loading = true;
+  const res = await fetch('/api/projects');
+  projects = await res.json();
+  loading = false;
+}
+
+async function fetchFocusAreas() {
+  const res = await fetch('/api/focus-areas');
+  focusAreas = await res.json();
+}
+
+onMount(() => {
+  fetchProjects();
+  fetchFocusAreas();
+});
+
+async function handleSubmit(e: Event) {
   e.preventDefault();
   if (!title.trim()) return;
-  createProject({
-    title,
-    description,
-    focusAreaId
+  const res = await fetch('/api/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, description, focusAreaId })
   });
-  title = '';
-  description = '';
-  focusAreaId = '';
+  if (res.ok) {
+    await fetchProjects();
+    title = '';
+    description = '';
+    focusAreaId = '';
+  }
+}
+
+async function handleDelete(id: string) {
+  await fetch(`/api/projects?id=${id}`, { method: 'DELETE' });
+  await fetchProjects();
 }
 </script>
 
@@ -64,7 +94,7 @@ function handleSubmit(e: Event) {
   <label for="focusArea">Fokusområde</label>
   <select id="focusArea" bind:value={focusAreaId}>
     <option value="">Välj fokusområde</option>
-    {#each $focusAreas as area (area.id)}
+    {#each focusAreas as area (area.id)}
       <option value={area.id}>{area.title}</option>
     {/each}
   </select>

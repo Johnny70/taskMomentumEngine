@@ -1,12 +1,15 @@
+
 import { momentum } from './momentumStore';
-import { timerEvents } from './timerStore';
+import { timerEvents } from './timerService';
 import type { TimerEvent } from './timerModels';
 import type { MomentumState } from './momentumModels';
 import { get } from 'svelte/store';
 
-// Simple momentum calculation based on timer events
+// Simple momentum calculation based on timer events (aggregated from Map)
 export function updateMomentum() {
-  const events = get(timerEvents);
+  const eventsMap = get(timerEvents);
+  // Flatten all TimerEvent[] arrays from the Map into a single array
+  const events: TimerEvent[] = Array.from(eventsMap.values()).flat();
   let sessionLength = 0;
   let streaks = 0;
   let combos = 0;
@@ -14,8 +17,9 @@ export function updateMomentum() {
   let deepWorkSessions = 0;
   let momentumCurve: number[] = [];
 
-  // Example: sessionLength = sum of last session
   if (events.length > 0) {
+    // Sort by start time ascending
+    events.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
     const last = events[events.length - 1];
     sessionLength = last.duration || 0;
     momentumCurve = events.map(e => e.duration || 0);
@@ -31,6 +35,7 @@ export function updateMomentum() {
 
   // Score: simple weighted sum
   let momentumScore = Math.min(100, sessionLength / 60 + streaks * 5 + combos * 10 + deepWorkSessions * 15);
+  momentumScore = Math.round(momentumScore * 10) / 10;
   let momentumState: MomentumState['momentumState'] = 'low';
   if (momentumScore > 80) momentumState = 'peak';
   else if (momentumScore > 60) momentumState = 'stable';

@@ -1,31 +1,43 @@
 <script lang="ts">
-import { focusAreas } from './stores';
 import type { FocusArea } from './models';
+import { onMount } from 'svelte';
 
+let focusAreas: FocusArea[] = [];
 let title = '';
 let description = '';
 let color = '#2196f3';
 let icon = '💼';
+let loading = false;
 
-function handleSubmit(e: Event) {
-  e.preventDefault();
-  if (!title.trim()) return;
-  const newArea: FocusArea = {
-    id: crypto.randomUUID(),
-    title,
-    description,
-    color,
-    icon
-  };
-  focusAreas.update(arr => [...arr, newArea]);
-  title = '';
-  description = '';
-  color = '#2196f3';
-  icon = '💼';
+async function fetchFocusAreas() {
+  loading = true;
+  const res = await fetch('/api/focus-areas');
+  focusAreas = await res.json();
+  loading = false;
 }
 
-function handleDelete(id: string) {
-  focusAreas.update(arr => arr.filter(area => area.id !== id));
+onMount(fetchFocusAreas);
+
+async function handleSubmit(e: Event) {
+  e.preventDefault();
+  if (!title.trim()) return;
+  const res = await fetch('/api/focus-areas', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, description, color, icon })
+  });
+  if (res.ok) {
+    await fetchFocusAreas();
+    title = '';
+    description = '';
+    color = '#2196f3';
+    icon = '💼';
+  }
+}
+
+async function handleDelete(id: string) {
+  await fetch(`/api/focus-areas?id=${id}`, { method: 'DELETE' });
+  await fetchFocusAreas();
 }
 </script>
 
@@ -134,10 +146,12 @@ function handleDelete(id: string) {
 
 <div class="focusarea-list">
   <h2 style="margin-bottom:1rem; color:#1769aa;">Fokusområden</h2>
-  {#if $focusAreas.length === 0}
+  {#if loading}
+    <div>Laddar...</div>
+  {:else if focusAreas.length === 0}
     <div>Inga fokusområden ännu.</div>
   {:else}
-    {#each $focusAreas as area (area.id)}
+    {#each focusAreas as area (area.id)}
       <div class="focusarea-item">
         <span class="focusarea-title">{area.icon} {area.title}</span>
         <button class="delete-btn" onclick={() => handleDelete(area.id)}>Ta bort</button>
